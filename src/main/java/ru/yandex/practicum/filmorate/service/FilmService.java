@@ -9,6 +9,7 @@ import ru.yandex.practicum.filmorate.storage.FilmStorage;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @Service
 @Slf4j
@@ -17,7 +18,7 @@ public class FilmService {
 
     private final FilmStorage filmStorage;
 
-    // Минимально допустимая дата релиза фильма по ТЗ
+    // Минимально допустимая дата релиза фильма
     private static final LocalDate MIN_RELEASE_DATE = LocalDate.of(1895, 12, 28);
 
     // Создание фильма после прохождения валидации
@@ -39,7 +40,7 @@ public class FilmService {
 
         // Наличие фильма с таким ID обязательно
         filmStorage.getById(film.getId())
-                .orElseThrow(() -> new ValidationException("Фильм с таким id не найден"));
+                .orElseThrow(() -> new NoSuchElementException("Фильм с таким id не найден"));
 
         return filmStorage.update(film);
     }
@@ -50,7 +51,6 @@ public class FilmService {
 
     // Дополнительная валидация, которую нельзя выразить стандартными аннотациями
     private void validate(Film film) {
-
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
             throw new ValidationException("Дата релиза не раньше 28 декабря 1895 года");
         }

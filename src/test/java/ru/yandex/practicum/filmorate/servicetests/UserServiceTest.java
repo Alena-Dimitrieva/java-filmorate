@@ -9,6 +9,7 @@ import ru.yandex.practicum.filmorate.service.UserService;
 import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
 
 import java.time.LocalDate;
+import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -52,6 +53,6 @@ class UserServiceTest extends AbstractIntegrationTest {
         user.setLogin("login");
         user.setBirthday(LocalDate.of(1990, 1, 1));
 
-        assertThrows(ValidationException.class, () -> userService.update(user));
+        assertThrows(NoSuchElementException.class, () -> userService.update(user));
     }
 }

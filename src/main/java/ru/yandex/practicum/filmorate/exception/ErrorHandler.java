@@ -1,48 +1,68 @@
 package ru.yandex.practicum.filmorate.exception;
 
-import org.springframework.context.support.DefaultMessageSourceResolvable;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
 
 @SuppressWarnings("unused")
 @RestControllerAdvice
+@Slf4j
 public class ErrorHandler {
 
-    // Обработка кастомной валидации
+    /**
+     * Обработка ошибок валидации из сервиса
+     * Возвращение статуса 400 Bad Request
+     */
     @ExceptionHandler(ValidationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleValidationException(ValidationException e) {
-        return Map.of("error", e.getMessage());
+    public ResponseEntity<Map<String, String>> handleValidationException(ValidationException e) {
+        log.warn("ValidationException: {}", e.getMessage());
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
-    // Обработка стандартной валидации Spring (например, @NotBlank, @Email, @PastOrPresent)
+    /**
+     * Обработка ошибок валидации аннотаций (@Valid)
+     * Возвращаем статус 400 Bad Request
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleValidationErrors(MethodArgumentNotValidException e) {
-        String errorMessage = e.getBindingResult().getFieldErrors().stream()
-                .map(DefaultMessageSourceResolvable::getDefaultMessage) //сообщение из аннотаций
-                .collect(Collectors.joining("; "));
-        return Map.of("error", errorMessage);
+    public ResponseEntity<Map<String, String>> handleValidationErrors(MethodArgumentNotValidException e) {
+        log.warn("MethodArgumentNotValidException: {}", e.getMessage());
+        Map<String, String> errorResponse = new HashMap<>();
+        e.getBindingResult().getFieldErrors().forEach(fieldError ->
+                errorResponse.put(fieldError.getField(), fieldError.getDefaultMessage())
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
-    // Обработка случая, когда объект не найден (например, пользователь/фильм по id)
+    /**
+     * Обработка ошибок, когда объект не найден (например, при update unknown)
+     * Возвращаем статус 404 Not Found
+     */
     @ExceptionHandler(NoSuchElementException.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public Map<String, String> handleNotFound(NoSuchElementException e) {
-        return Map.of("error", e.getMessage());
+    public ResponseEntity<Map<String, String>> handleNotFound(NoSuchElementException e) {
+        log.warn("NoSuchElementException: {}", e.getMessage());
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", e.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
     }
 
-    // Общая обработка всех остальных исключений
+    /**
+     * Обработка всех остальных неожиданных ошибок
+     * Возвращаем статус 500 Internal Server Error
+     */
     @ExceptionHandler(RuntimeException.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public Map<String, String> handleOtherExceptions(RuntimeException e) {
-        return Map.of("error", e.getMessage());
+    public ResponseEntity<Map<String, String>> handleOtherExceptions(RuntimeException e) {
+        log.error("Unexpected exception: ", e);
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", "Произошла ошибка сервера: " + e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 }

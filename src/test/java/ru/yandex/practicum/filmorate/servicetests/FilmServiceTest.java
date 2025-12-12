@@ -9,6 +9,7 @@ import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
 
 import java.time.LocalDate;
+import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -54,6 +55,6 @@ class FilmServiceTest extends AbstractIntegrationTest {
         film.setDuration(100);
         film.setReleaseDate(LocalDate.of(2000, 1, 1));
 
-        assertThrows(ValidationException.class, () -> filmService.update(film));
+        assertThrows(NoSuchElementException.class, () -> filmService.update(film));
     }
 }

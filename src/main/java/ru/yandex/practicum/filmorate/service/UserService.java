@@ -9,6 +9,7 @@ import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @Service
 @Slf4j
@@ -26,7 +27,9 @@ public class UserService {
         return userStorage.create(user);
     }
 
-    // Обновление существующего пользователя
+    /**
+     * Обновление существующего пользователя
+     */
     public User update(User user) {
         if (user.getId() <= 0) {
             throw new ValidationException("Id должен быть положительным");
@@ -37,7 +40,7 @@ public class UserService {
 
         // Проверка, что пользователь существует
         userStorage.getById(user.getId())
-                .orElseThrow(() -> new ValidationException("Пользователь с таким id не найден"));
+                .orElseThrow(() -> new NoSuchElementException("Пользователь с таким id не найден"));
 
         return userStorage.update(user);
     }
@@ -48,7 +51,6 @@ public class UserService {
 
     // Проверки, которые нельзя выразить только аннотациями
     private void validate(User user) {
-
         if (user.getLogin().contains(" ")) {
             throw new ValidationException("Логин не должен содержать пробелы");
         }
