@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 
+
 public abstract class AbstractIntegrationTest {
 
     protected static ConfigurableApplicationContext context;
