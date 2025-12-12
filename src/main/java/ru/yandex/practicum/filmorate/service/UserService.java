@@ -18,7 +18,7 @@ public class UserService {
     private final UserStorage userStorage;
 
     /**
-     * Создание пользователя с заменой пустого имени на логин.
+     * Создание пользователя с заменой пустого имени на логин
      */
     public User create(User user) {
         validate(user);
@@ -26,10 +26,8 @@ public class UserService {
         return userStorage.create(user);
     }
 
-
-    //Обновление существующего пользователя.
+    // Обновление существующего пользователя
     public User update(User user) {
-
         if (user.getId() <= 0) {
             throw new ValidationException("Id должен быть положительным");
         }
@@ -48,7 +46,7 @@ public class UserService {
         return userStorage.findAll();
     }
 
-   //Проверки, которые нельзя выразить только аннотациями.
+    // Проверки, которые нельзя выразить только аннотациями
     private void validate(User user) {
 
         if (user.getLogin().contains(" ")) {
@@ -61,7 +59,7 @@ public class UserService {
         }
     }
 
-    //Если имя пустое — подставляется логин.
+    // Если имя пустое — подставляется логин
     private void applyDefaultName(User user) {
         if (user.getName() == null || user.getName().isBlank()) {
             user.setName(user.getLogin());

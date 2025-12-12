@@ -20,7 +20,7 @@ public class FilmService {
     // Минимально допустимая дата релиза фильма по ТЗ
     private static final LocalDate MIN_RELEASE_DATE = LocalDate.of(1895, 12, 28);
 
-    //Создание фильма после прохождения валидации.
+    // Создание фильма после прохождения валидации
     public Film create(Film film) {
         validate(film);
         return filmStorage.create(film);
@@ -48,7 +48,7 @@ public class FilmService {
         return filmStorage.findAll();
     }
 
-    //Дополнительная валидация, которую нельзя выразить стандартными аннотациями.
+    // Дополнительная валидация, которую нельзя выразить стандартными аннотациями
     private void validate(Film film) {
 
         if (film.getReleaseDate().isBefore(MIN_RELEASE_DATE)) {
