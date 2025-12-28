@@ -7,6 +7,7 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
+import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
 
 import java.time.LocalDate;
 import java.util.NoSuchElementException;
@@ -19,7 +20,9 @@ class FilmServiceTest extends AbstractIntegrationTest {
 
     @BeforeEach
     void setup() {
-        filmService = new FilmService(new InMemoryFilmStorage());
+        InMemoryFilmStorage filmStorage = new InMemoryFilmStorage();
+        InMemoryUserStorage userStorage = new InMemoryUserStorage(); // для лайков
+        filmService = new FilmService(filmStorage, userStorage);
     }
 
     @Test
@@ -32,7 +35,7 @@ class FilmServiceTest extends AbstractIntegrationTest {
 
         Film created = filmService.create(film);
 
-        assertEquals("Interstellar", created.getName());
+        assertEquals("Interstellar", created.getName()); // проверка корректного создания
     }
 
     @Test
@@ -41,7 +44,7 @@ class FilmServiceTest extends AbstractIntegrationTest {
         film.setName("Ancient Movie");
         film.setDescription("Old one");
         film.setDuration(100);
-        film.setReleaseDate(LocalDate.of(1800, 1, 1));
+        film.setReleaseDate(LocalDate.of(1800, 1, 1)); // слишком старая дата
 
         assertThrows(ValidationException.class, () -> filmService.create(film));
     }
@@ -49,7 +52,7 @@ class FilmServiceTest extends AbstractIntegrationTest {
     @Test
     void shouldNotUpdateNonExistingFilm() {
         Film film = new Film();
-        film.setId(123);
+        film.setId(123); // несуществующий фильм
         film.setName("Test");
         film.setDescription("Desc");
         film.setDuration(100);

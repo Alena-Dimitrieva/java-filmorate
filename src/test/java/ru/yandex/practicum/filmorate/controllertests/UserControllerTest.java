@@ -88,4 +88,59 @@ class UserControllerTest extends AbstractIntegrationTest {
 
         verify(userService, times(1)).findAll();
     }
+
+    //Новые тесты
+    @Test
+    void testAddFriend() throws Exception {
+        doNothing().when(userService).addFriend(1, 2);
+
+        mockMvc.perform(put("/users/1/friends/2"))
+                .andExpect(status().isOk());
+
+        verify(userService, times(1)).addFriend(1, 2);
+    }
+
+    @Test
+    void testRemoveFriend() throws Exception {
+        doNothing().when(userService).removeFriend(1, 2);
+
+        mockMvc.perform(delete("/users/1/friends/2"))
+                .andExpect(status().isOk());
+
+        verify(userService, times(1)).removeFriend(1, 2);
+    }
+
+    @Test
+    void testGetFriends() throws Exception {
+        User friend = new User();
+        friend.setId(2);
+        friend.setLogin("friend");
+        friend.setEmail("friend@mail.com");
+        friend.setBirthday(LocalDate.of(2000,1,1));
+
+        when(userService.getFriends(1)).thenReturn(List.of(friend));
+
+        mockMvc.perform(get("/users/1/friends"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].login").value("friend"));
+
+        verify(userService, times(1)).getFriends(1);
+    }
+
+    @Test
+    void testGetCommonFriends() throws Exception {
+        User commonFriend = new User();
+        commonFriend.setId(3);
+        commonFriend.setLogin("common");
+        commonFriend.setEmail("common@mail.com");
+        commonFriend.setBirthday(LocalDate.of(2000,1,1));
+
+        when(userService.getCommonFriends(1, 2)).thenReturn(List.of(commonFriend));
+
+        mockMvc.perform(get("/users/1/friends/common/2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].login").value("common"));
+
+        verify(userService, times(1)).getCommonFriends(1, 2);
+    }
 }
