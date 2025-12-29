@@ -3,7 +3,6 @@ package ru.yandex.practicum.filmorate.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import ru.yandex.practicum.filmorate.exception.IncorrectCountException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
@@ -31,9 +30,7 @@ public class FilmService {
     }
 
     public Film update(Film film) {
-        if (film.getId() <= 0) {
-            throw new ValidationException("Id должен быть положительным");
-        }
+        // Проверка id убрана
 
         validate(film);
 
@@ -48,15 +45,13 @@ public class FilmService {
     }
 
     public Film getById(int id) {
-        if (id <= 0) {
-            throw new ValidationException("Id должен быть положительным");
-        }
+        // Проверка id убрана
 
         return filmStorage.getById(id)
                 .orElseThrow(() -> new NoSuchElementException("Фильм с таким id не найден"));
     }
 
-    //поставить лайк фильму
+    // поставить лайк фильму
     public void addLike(int filmId, int userId) {
         filmStorage.getById(filmId)
                 .orElseThrow(() -> new NoSuchElementException("Фильм с таким id не найден"));
@@ -67,29 +62,25 @@ public class FilmService {
         filmStorage.addLike(filmId, userId);
     }
 
-    //удалить лайк
+    // удалить лайк
     public void removeLike(int filmId, int userId) {
-        // Проверяем, что фильм существует
         filmStorage.getById(filmId)
                 .orElseThrow(() -> new NoSuchElementException("Фильм с таким id не найден"));
 
-        // Проверка существования пользователя перед удалением лайка.
         userStorage.getById(userId)
                 .orElseThrow(() -> new NoSuchElementException("Пользователь с таким id не найден"));
 
-        // Хранилище для удаления лайка
         filmStorage.removeLike(filmId, userId);
     }
 
-    //список популярных фильмов по количеству лайков
+    // список популярных фильмов
     public List<Film> getPopularFilms(int count) {
-        if (count <= 0) {
-            throw new IncorrectCountException("Параметр count должен быть больше 0");
-        }
+        // Проверка count убрана
+
         return filmStorage.getPopularFilms(count);
     }
 
-    //Расширенная валидация по ТЗ
+    // Расширенная валидация по ТЗ
     private void validate(Film film) {
         if (film.getName() == null || film.getName().isBlank()) {
             throw new ValidationException("Название фильма не может быть пустым");

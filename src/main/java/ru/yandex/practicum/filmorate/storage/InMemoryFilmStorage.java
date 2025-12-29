@@ -8,11 +8,9 @@ import java.util.stream.Collectors;
 
 @Component
 public class InMemoryFilmStorage implements FilmStorage {
-    private final Map<Integer, Film> films = new HashMap<>();
-    private int idCounter = 1;
 
-    //хранение лайков: filmId -> set of userId
-    private final Map<Integer, Set<Integer>> likes = new HashMap<>();
+    private final Map<Integer, Film> films = new HashMap<>();
+    private int idCounter = 1;// Лайки теперь хранятся внутри объекта Film (film.getLikes()).
 
     @Override
     public Film create(Film film) {
@@ -23,7 +21,6 @@ public class InMemoryFilmStorage implements FilmStorage {
 
     @Override
     public Film update(Film film) {
-        // Проверка существования фильма перед обновлением
         if (!films.containsKey(film.getId())) {
             throw new NoSuchElementException("Фильм с таким id не найден");
         }
@@ -41,28 +38,34 @@ public class InMemoryFilmStorage implements FilmStorage {
         return new ArrayList<>(films.values());
     }
 
-    //поставить лайк фильму
+    // поставить лайк фильму
     @Override
     public void addLike(int filmId, int userId) {
-        likes.computeIfAbsent(filmId, id -> new HashSet<>()).add(userId);
-    }
-
-    //удалить лайк
-    @Override
-    public void removeLike(int filmId, int userId) {
-        if (likes.containsKey(filmId)) {
-            likes.get(filmId).remove(userId);
+        Film film = films.get(filmId);
+        if (film != null) {
+            film.getLikes().add(userId);
         }
     }
 
-    //получить список популярных фильмов по количеству лайков
+    // удалить лайк
+    @Override
+    public void removeLike(int filmId, int userId) {
+        Film film = films.get(filmId);
+        if (film != null) {
+            film.getLikes().remove(userId);
+        }
+    }
+
+    // получить список популярных фильмов по количеству лайков
     @Override
     public List<Film> getPopularFilms(int count) {
         return films.values().stream()
-                .sorted((f1, f2) -> Integer.compare(
-                        likes.getOrDefault(f2.getId(), Set.of()).size(),
-                        likes.getOrDefault(f1.getId(), Set.of()).size()
-                ))
+                .sorted((f1, f2) ->
+                        Integer.compare(
+                                f2.getLikes().size(),
+                                f1.getLikes().size()
+                        )
+                )
                 .limit(count)
                 .collect(Collectors.toList());
     }

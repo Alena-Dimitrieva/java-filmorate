@@ -1,8 +1,10 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
@@ -13,9 +15,10 @@ import java.util.List;
 @RequestMapping("/users")
 @Slf4j
 @RequiredArgsConstructor
+@Validated // Добавлено для валидации параметров
 public class UserController {
 
-    // Контроллер общается только с сервисом
+    // Контроллер работает только с сервисом
     private final UserService userService;
 
     // Создание пользователя
@@ -38,31 +41,63 @@ public class UserController {
 
     // Получение пользователя по id (GET /users/{id})
     @GetMapping("/{id}")
-    public User getById(@PathVariable int id) {
+    public User getById(
+            @PathVariable
+            @Positive(message = "Id должен быть положительным") // ИЗМЕНЕНО
+            int id
+    ) {
         return userService.getById(id);
     }
 
     // Добавление в друзья (PUT /users/{id}/friends/{friendId})
     @PutMapping("/{id}/friends/{friendId}")
-    public void addFriend(@PathVariable("id") int id, @PathVariable("friendId") int friendId) {
+    public void addFriend(
+            @PathVariable("id")
+            @Positive(message = "Id пользователя должен быть положительным") // ИЗМЕНЕНО
+            int id,
+
+            @PathVariable("friendId")
+            @Positive(message = "Id друга должен быть положительным") // ИЗМЕНЕНО
+            int friendId
+    ) {
         userService.addFriend(id, friendId);
     }
 
     // Удаление из друзей (DELETE /users/{id}/friends/{friendId})
     @DeleteMapping("/{id}/friends/{friendId}")
-    public void removeFriend(@PathVariable("id") int id, @PathVariable("friendId") int friendId) {
+    public void removeFriend(
+            @PathVariable("id")
+            @Positive(message = "Id пользователя должен быть положительным") // ИЗМЕНЕНО
+            int id,
+
+            @PathVariable("friendId")
+            @Positive(message = "Id друга должен быть положительным") // ИЗМЕНЕНО
+            int friendId
+    ) {
         userService.removeFriend(id, friendId);
     }
 
     // Получение списка друзей пользователя (GET /users/{id}/friends)
     @GetMapping("/{id}/friends")
-    public List<User> getFriends(@PathVariable("id") int id) {
+    public List<User> getFriends(
+            @PathVariable("id")
+            @Positive(message = "Id пользователя должен быть положительным") // ИЗМЕНЕНО
+            int id
+    ) {
         return userService.getFriends(id);
     }
 
     // Получение общих друзей (GET /users/{id}/friends/common/{otherId})
     @GetMapping("/{id}/friends/common/{otherId}")
-    public List<User> getCommonFriends(@PathVariable("id") int id, @PathVariable("otherId") int otherId) {
+    public List<User> getCommonFriends(
+            @PathVariable("id")
+            @Positive(message = "Id пользователя должен быть положительным") // ИЗМЕНЕНО
+            int id,
+
+            @PathVariable("otherId")
+            @Positive(message = "Id второго пользователя должен быть положительным") // ИЗМЕНЕНО
+            int otherId
+    ) {
         return userService.getCommonFriends(id, otherId);
     }
 }

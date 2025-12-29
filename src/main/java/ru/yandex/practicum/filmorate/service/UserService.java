@@ -25,9 +25,7 @@ public class UserService {
     }
 
     public User update(User user) {
-        if (user.getId() <= 0) {
-            throw new ValidationException("Id должен быть положительным");
-        }
+        // Проверка id убрана
 
         validate(user);
         applyDefaultName(user);
@@ -43,18 +41,14 @@ public class UserService {
     }
 
     public User getById(int id) {
-        if (id <= 0) {
-            throw new ValidationException("Id должен быть положительным");
-        }
+        // Проверка id убрана
 
         return userStorage.getById(id)
                 .orElseThrow(() -> new NoSuchElementException("Пользователь с таким id не найден"));
     }
 
-    //добавление друга
+    // добавление друга
     public void addFriend(int userId, int friendId) {
-        // ИЗМЕНЕНО: явная проверка существования обоих пользователей перед операцией.
-        // Это гарантирует, что при неизвестном id мы бросим NoSuchElementException и вернём 404.
         userStorage.getById(userId)
                 .orElseThrow(() -> new NoSuchElementException("Пользователь не найден"));
         userStorage.getById(friendId)
@@ -63,9 +57,8 @@ public class UserService {
         userStorage.addFriend(userId, friendId);
     }
 
-    // Удаление из друзей
+    // удаление из друзей
     public void removeFriend(int userId, int friendId) {
-        // Добавлена проверка существования пользователя и друга.
         userStorage.getById(userId)
                 .orElseThrow(() -> new NoSuchElementException("Пользователь не найден"));
         userStorage.getById(friendId)
@@ -74,7 +67,7 @@ public class UserService {
         userStorage.removeFriend(userId, friendId);
     }
 
-    //получение списка друзей
+    // список друзей
     public List<User> getFriends(int userId) {
         userStorage.getById(userId)
                 .orElseThrow(() -> new NoSuchElementException("Пользователь не найден"));
@@ -82,12 +75,12 @@ public class UserService {
         return userStorage.getFriends(userId);
     }
 
-    //получение общих друзей
+    // общие друзья
     public List<User> getCommonFriends(int userId, int otherId) {
         return userStorage.getCommonFriends(userId, otherId);
     }
 
-    //Расширенная валидация по ТЗ
+    // Расширенная валидация по ТЗ
     private void validate(User user) {
         if (user.getLogin() == null || user.getLogin().isBlank()) {
             throw new ValidationException("Логин не может быть пустым");

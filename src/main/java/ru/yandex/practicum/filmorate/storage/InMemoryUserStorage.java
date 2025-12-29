@@ -10,10 +10,7 @@ import java.util.stream.Collectors;
 public class InMemoryUserStorage implements UserStorage {
 
     private final Map<Integer, User> users = new HashMap<>();
-    private int idCounter = 1;
-
-    // Хранение друзей: userId -> множество friendId
-    private final Map<Integer, Set<Integer>> friends = new HashMap<>();
+    private int idCounter = 1; //Друзья теперь хранятся внутри объекта User (user.getFriends()).
 
     @Override
     public User create(User user) {
@@ -45,24 +42,36 @@ public class InMemoryUserStorage implements UserStorage {
 
     @Override
     public void addFriend(int userId, int friendId) {
-        // Добавление взаимной дружбы
-        friends.computeIfAbsent(userId, id -> new HashSet<>()).add(friendId);
-        friends.computeIfAbsent(friendId, id -> new HashSet<>()).add(userId);
+        User user = users.get(userId);
+        User friend = users.get(friendId);
+
+        if (user != null && friend != null) {
+            user.getFriends().add(friendId);
+            friend.getFriends().add(userId);
+        }
     }
 
     @Override
     public void removeFriend(int userId, int friendId) {
-        if (friends.containsKey(userId)) {
-            friends.get(userId).remove(friendId);
+        User user = users.get(userId);
+        User friend = users.get(friendId);
+
+        if (user != null) {
+            user.getFriends().remove(friendId);
         }
-        if (friends.containsKey(friendId)) {
-            friends.get(friendId).remove(userId);
+        if (friend != null) {
+            friend.getFriends().remove(userId);
         }
     }
 
     @Override
     public List<User> getFriends(int userId) {
-        return friends.getOrDefault(userId, Set.of()).stream()
+        User user = users.get(userId);
+        if (user == null) {
+            return List.of();
+        }
+
+        return user.getFriends().stream()
                 .map(users::get)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
@@ -70,11 +79,15 @@ public class InMemoryUserStorage implements UserStorage {
 
     @Override
     public List<User> getCommonFriends(int userId, int otherId) {
-        Set<Integer> first = friends.getOrDefault(userId, Set.of());
-        Set<Integer> second = friends.getOrDefault(otherId, Set.of());
+        User first = users.get(userId);
+        User second = users.get(otherId);
 
-        return first.stream()
-                .filter(second::contains)
+        if (first == null || second == null) {
+            return List.of();
+        }
+
+        return first.getFriends().stream()
+                .filter(second.getFriends()::contains)
                 .map(users::get)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
