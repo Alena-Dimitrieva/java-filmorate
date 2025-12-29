@@ -28,18 +28,28 @@ class UserServiceTest extends AbstractIntegrationTest {
         user.setEmail("test@mail.com");
         user.setLogin("tester");
         user.setBirthday(LocalDate.of(2000, 1, 1));
-        user.setName("");
+        user.setName(""); // имя пустое — должно подставиться из логина
 
         User created = userService.create(user);
 
-        assertEquals("tester", created.getName());
+        assertEquals("tester", created.getName()); // проверка подстановки имени
+    }
+
+    @Test
+    void shouldNotCreateUserWithEmptyLogin() {
+        User user = new User();
+        user.setEmail("a@a.com");
+        user.setLogin(""); // пустой логин — ValidationException
+        user.setBirthday(LocalDate.of(2000, 1, 1));
+
+        assertThrows(ValidationException.class, () -> userService.create(user));
     }
 
     @Test
     void shouldNotCreateUserWithLoginWithSpaces() {
         User user = new User();
         user.setEmail("test@mail.com");
-        user.setLogin("bad login");
+        user.setLogin("bad login"); // пробелы в логине
         user.setBirthday(LocalDate.of(2000, 1, 1));
 
         assertThrows(ValidationException.class, () -> userService.create(user));
@@ -48,7 +58,7 @@ class UserServiceTest extends AbstractIntegrationTest {
     @Test
     void shouldNotUpdateNonExistingUser() {
         User user = new User();
-        user.setId(999);
+        user.setId(999); // несуществующий пользователь
         user.setEmail("a@a.com");
         user.setLogin("login");
         user.setBirthday(LocalDate.of(1990, 1, 1));

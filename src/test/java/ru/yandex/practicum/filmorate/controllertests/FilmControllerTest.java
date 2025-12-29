@@ -26,10 +26,10 @@ class FilmControllerTest extends AbstractIntegrationTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private ObjectMapper objectMapper; // для сериализации в JSON
+    private ObjectMapper objectMapper;
 
     @MockBean
-    private FilmService filmService; // мок-сервис
+    private FilmService filmService;
 
     @Test
     void testCreateFilm() throws Exception {
@@ -40,7 +40,6 @@ class FilmControllerTest extends AbstractIntegrationTest {
         film.setReleaseDate(LocalDate.of(1997, 12, 19));
         film.setDuration(195);
 
-        // Мокировка сервиса: при любом объекте Film возвращается наш объект
         when(filmService.create(any(Film.class))).thenReturn(film);
 
         mockMvc.perform(post("/films")
@@ -89,5 +88,44 @@ class FilmControllerTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$[0].name").value("Titanic"));
 
         verify(filmService, times(1)).findAll();
+    }
+
+    //Новые тесты
+    @Test
+    void testAddLike() throws Exception {
+        doNothing().when(filmService).addLike(1, 2);
+
+        mockMvc.perform(put("/films/1/like/2"))
+                .andExpect(status().isOk());
+
+        verify(filmService, times(1)).addLike(1, 2);
+    }
+
+    @Test
+    void testRemoveLike() throws Exception {
+        doNothing().when(filmService).removeLike(1, 2);
+
+        mockMvc.perform(delete("/films/1/like/2"))
+                .andExpect(status().isOk());
+
+        verify(filmService, times(1)).removeLike(1, 2);
+    }
+
+    @Test
+    void testGetPopularFilms() throws Exception {
+        Film film = new Film();
+        film.setId(1);
+        film.setName("Popular Film");
+        film.setDescription("Desc");
+        film.setReleaseDate(LocalDate.of(2020, 1, 1));
+        film.setDuration(120);
+
+        when(filmService.getPopularFilms(5)).thenReturn(List.of(film));
+
+        mockMvc.perform(get("/films/popular?count=5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Popular Film"));
+
+        verify(filmService, times(1)).getPopularFilms(5);
     }
 }
