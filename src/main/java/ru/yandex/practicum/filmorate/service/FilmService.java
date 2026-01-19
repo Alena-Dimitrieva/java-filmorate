@@ -3,12 +3,14 @@ package ru.yandex.practicum.filmorate.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.Enum.MpaRating;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -26,6 +28,7 @@ public class FilmService {
     // Создание фильма после прохождения валидации
     public Film create(Film film) {
         validate(film);
+        initializeDefaults(film); //инициализация genres и mpaRating
         return filmStorage.create(film);
     }
 
@@ -33,6 +36,7 @@ public class FilmService {
         // Проверка id убрана
 
         validate(film);
+        initializeDefaults(film);
 
         filmStorage.getById(film.getId())
                 .orElseThrow(() -> new NoSuchElementException("Фильм с таким id не найден"));
@@ -78,6 +82,15 @@ public class FilmService {
         // Проверка count убрана
 
         return filmStorage.getPopularFilms(count);
+    }
+
+    private void initializeDefaults(Film film) {
+        if (film.getGenres() == null) {
+            film.setGenres(new HashSet<>());
+        }
+        if (film.getMpaRating() == null) {
+            film.setMpaRating(MpaRating.G); // по умолчанию без возрастных ограничений
+        }
     }
 
     // Расширенная валидация по ТЗ

@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import ru.yandex.practicum.filmorate.Enum.Genre;
+import ru.yandex.practicum.filmorate.Enum.MpaRating;
+
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
@@ -40,4 +43,6 @@ public class Film {
      * Идентификаторы пользователей, поставивших лайк фильму.
      */
     private Set<Integer> likes = new HashSet<>();
+    private Set<Genre> genres = new HashSet<>();//Жанры фильма
+    private MpaRating mpaRating;//Рейтинг фильма по классификации MPA
 }

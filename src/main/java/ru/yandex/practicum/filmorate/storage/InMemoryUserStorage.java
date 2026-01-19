@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.storage;
 
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.Enum.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.util.*;
@@ -46,8 +47,19 @@ public class InMemoryUserStorage implements UserStorage {
         User friend = users.get(friendId);
 
         if (user != null && friend != null) {
-            user.getFriends().add(friendId);
-            friend.getFriends().add(userId);
+            user.getFriends().put(friendId, FriendshipStatus.UNCONFIRMED);
+            friend.getFriends().put(userId, FriendshipStatus.UNCONFIRMED);
+        }
+    }
+
+    @Override
+    public void confirmFriend(int userId, int friendId) {
+        User user = users.get(userId);
+        User friend = users.get(friendId);
+
+        if (user != null && friend != null) {
+            user.getFriends().put(friendId, FriendshipStatus.CONFIRMED);
+            friend.getFriends().put(userId, FriendshipStatus.CONFIRMED);
         }
     }
 
@@ -71,7 +83,7 @@ public class InMemoryUserStorage implements UserStorage {
             return List.of();
         }
 
-        return user.getFriends().stream()
+        return user.getFriends().keySet().stream()
                 .map(users::get)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
@@ -86,8 +98,8 @@ public class InMemoryUserStorage implements UserStorage {
             return List.of();
         }
 
-        return first.getFriends().stream()
-                .filter(second.getFriends()::contains)
+        return first.getFriends().keySet().stream()
+                .filter(second.getFriends().keySet()::contains)
                 .map(users::get)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());

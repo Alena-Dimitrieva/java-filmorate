@@ -1,12 +1,12 @@
 package ru.yandex.practicum.filmorate.model;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.*;
 import lombok.Data;
+import ru.yandex.practicum.filmorate.Enum.FriendshipStatus;
+
 import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Модель пользователя.
@@ -15,6 +15,7 @@ import java.util.Set;
 @Data
 public class User {
 
+    @Positive(message = "Id должен быть положительным")
     private int id;
 
     @Email(message = "Некорректный e-mail формат")
@@ -34,11 +35,12 @@ public class User {
      */
     private String name;
 
+    @NotNull(message = "Дата рождения обязательна")
     @PastOrPresent(message = "Дата рождения не может быть в будущем")
     private LocalDate birthday;
 
     /**
-     * Идентификаторы друзей пользователя.
+     * Друзья пользователя и их статус дружбы.
      */
-    private Set<Integer> friends = new HashSet<>();
+    private Map<Integer, FriendshipStatus> friends = new HashMap<>();
 }
