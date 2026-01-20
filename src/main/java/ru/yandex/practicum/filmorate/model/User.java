@@ -1,6 +1,8 @@
 package ru.yandex.practicum.filmorate.model;
 
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PastOrPresent;
 import lombok.Data;
 import ru.yandex.practicum.filmorate.Enum.FriendshipStatus;
 
@@ -15,7 +17,6 @@ import java.util.Map;
 @Data
 public class User {
 
-    @Positive(message = "Id должен быть положительным")
     private int id;
 
     @Email(message = "Некорректный e-mail формат")
@@ -35,12 +36,12 @@ public class User {
      */
     private String name;
 
-    @NotNull(message = "Дата рождения обязательна")
     @PastOrPresent(message = "Дата рождения не может быть в будущем")
     private LocalDate birthday;
 
     /**
      * Друзья пользователя и их статус дружбы.
+     * Ключ — id друга, значение — статус: UNCONFIRMED / CONFIRMED
      */
     private Map<Integer, FriendshipStatus> friends = new HashMap<>();
 }

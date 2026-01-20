@@ -8,11 +8,13 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.yandex.practicum.filmorate.AbstractIntegrationTest;
+import ru.yandex.practicum.filmorate.Enum.MpaRating;
 import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 
 import static org.mockito.Mockito.*;
@@ -40,6 +42,9 @@ class FilmControllerTest extends AbstractIntegrationTest {
         film.setReleaseDate(LocalDate.of(1997, 12, 19));
         film.setDuration(195);
 
+        film.setGenres(new HashSet<>()); // добавление пустого Set жанра
+        film.setMpaRating(MpaRating.G); // добавление рейтинга по умолчанию
+
         when(filmService.create(any(Film.class))).thenReturn(film);
 
         mockMvc.perform(post("/films")
@@ -60,6 +65,9 @@ class FilmControllerTest extends AbstractIntegrationTest {
         film.setDescription("Updated description");
         film.setReleaseDate(LocalDate.of(1997, 12, 19));
         film.setDuration(195);
+
+        film.setGenres(new HashSet<>());// добавление пустых Set жанров
+        film.setMpaRating(MpaRating.G); // добавление рейтинга по умолчанию
 
         when(filmService.update(any(Film.class))).thenReturn(film);
 
