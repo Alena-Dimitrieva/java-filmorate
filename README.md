@@ -62,6 +62,17 @@ SELECT COUNT(*) AS likes_count
 FROM film_likes
 WHERE film_id = 1;
 
+ Получение фильма с его жанрами
+SELECT f.name AS film_name, fg.genre
+FROM films f
+JOIN film_genres fg ON f.id = fg.film_id
+WHERE f.id = 1;
+
+ Получение жанров фильма
+SELECT fg.genre
+FROM film_genres fg
+WHERE fg.film_id = 1;
+
  Добавление дружбы (запрос отправлен)
 INSERT INTO user_friends (user_id, friend_id, status)
 VALUES (1, 2, 'UNCONFIRMED');
@@ -80,7 +91,7 @@ FROM users u
 JOIN user_friends uf ON u.id = uf.friend_id
 WHERE uf.user_id = 1 AND uf.status = 'CONFIRMED';
 
- Получение всех фильмов
+ Получение всех фильмов(доп. информация получается отдельным запросом)
 SELECT * FROM films;
 
  Получение топ-5 популярных фильмов
