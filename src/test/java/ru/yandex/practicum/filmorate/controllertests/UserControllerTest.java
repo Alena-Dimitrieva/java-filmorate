@@ -1,26 +1,29 @@
 package ru.yandex.practicum.filmorate.controllertests;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
-import ru.yandex.practicum.filmorate.AbstractIntegrationTest;
-import ru.yandex.practicum.filmorate.controller.UserController;
-import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.service.UserService;
+import org.springframework.test.web.servlet.ResultActions;
+import ru.yandex.practicum.filmorate.dto.UserDto;
 
 import java.time.LocalDate;
-import java.util.List;
 
-import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(UserController.class)
-class UserControllerTest extends AbstractIntegrationTest {
+@SpringBootTest
+@AutoConfigureMockMvc
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@AutoConfigureTestDatabase
+class UserControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -28,119 +31,92 @@ class UserControllerTest extends AbstractIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
-    private UserService userService;
+    private UserDto user1;
+    private UserDto user2;
+
+    @BeforeEach
+    void setUp() {
+        // тестовые пользователи
+        user1 = new UserDto(0, "alice@example.com", "alice", "Alice", LocalDate.of(1990, 1, 1));
+        user2 = new UserDto(0, "bob@example.com", "bob", "Bob", LocalDate.of(1992, 2, 2));
+    }
 
     @Test
-    void testCreateUser() throws Exception {
-        User user = new User();
-        user.setId(1);
-        user.setEmail("test@example.com");
-        user.setLogin("tester");
-        user.setName("Test User");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
+    void createUser_shouldReturnCreatedUser() throws Exception {
+        ResultActions result = mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(user1)));
 
-        when(userService.create(any(User.class))).thenReturn(user);
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.email").value("alice@example.com"))
+                .andExpect(jsonPath("$.login").value("alice"))
+                .andExpect(jsonPath("$.name").value("Alice"));
+    }
+
+    @Test
+    void addFriendAndGetFriends_shouldReturnFriendList() throws Exception {
+        // Сначала создаём пользователей
+        UserDto created1 = objectMapper.readValue(mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(user1)))
+                .andReturn().getResponse().getContentAsString(), UserDto.class);
+
+        UserDto created2 = objectMapper.readValue(mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(user2)))
+                .andReturn().getResponse().getContentAsString(), UserDto.class);
+
+        // Добавляем друг друга
+        mockMvc.perform(put("/users/{id}/friends/{friendId}", created1.getId(), created2.getId()))
+                .andExpect(status().isOk());
+
+        // Проверяем список друзей пользователя 1
+        mockMvc.perform(get("/users/{id}/friends", created1.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(created2.getId()))
+                .andExpect(jsonPath("$[0].login").value("bob"));
+    }
+
+    @Test
+    void getCommonFriends_shouldReturnEmptyListIfNoCommonFriends() throws Exception {
+        // Создаём трёх пользователей
+        UserDto u1 = objectMapper.readValue(mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(user1)))
+                .andReturn().getResponse().getContentAsString(), UserDto.class);
+
+        UserDto u2 = objectMapper.readValue(mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(user2)))
+                .andReturn().getResponse().getContentAsString(), UserDto.class);
+
+        UserDto u3 = new UserDto(0, "charlie@example.com", "charlie", "Charlie", LocalDate.of(1995, 3, 3));
+        UserDto u3Created = objectMapper.readValue(mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(u3)))
+                .andReturn().getResponse().getContentAsString(), UserDto.class);
+
+        // Добавляем друзей: u1 -> u3, u2 -> u3
+        mockMvc.perform(put("/users/{id}/friends/{friendId}", u1.getId(), u3Created.getId()))
+                .andExpect(status().isOk());
+        mockMvc.perform(put("/users/{id}/friends/{friendId}", u2.getId(), u3Created.getId()))
+                .andExpect(status().isOk());
+
+        // Проверяем общих друзей u1 и u2
+        mockMvc.perform(get("/users/{id}/friends/common/{otherId}", u1.getId(), u2.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(u3Created.getId()));
+    }
+
+    @Test
+    void createUser_withInvalidEmail_shouldReturnBadRequest() throws Exception {
+        user1.setEmail("invalid-email");
 
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.login").value("tester"));
-
-        verify(userService, times(1)).create(any(User.class));
-    }
-
-    @Test
-    void testUpdateUser() throws Exception {
-        User user = new User();
-        user.setId(1);
-        user.setEmail("test@example.com");
-        user.setLogin("testerUpdated");
-        user.setName("Test Updated");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
-
-        when(userService.update(any(User.class))).thenReturn(user);
-
-        mockMvc.perform(put("/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.login").value("testerUpdated"));
-
-        verify(userService, times(1)).update(any(User.class));
-    }
-
-    @Test
-    void testFindAllUsers() throws Exception {
-        User user = new User();
-        user.setId(1);
-        user.setEmail("test@example.com");
-        user.setLogin("tester");
-        user.setName("Test User");
-        user.setBirthday(LocalDate.of(2000, 1, 1));
-
-        when(userService.findAll()).thenReturn(List.of(user));
-
-        mockMvc.perform(get("/users"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].login").value("tester"));
-
-        verify(userService, times(1)).findAll();
-    }
-
-    //Новые тесты
-    @Test
-    void testAddFriend() throws Exception {
-        doNothing().when(userService).addFriend(1, 2);
-
-        mockMvc.perform(put("/users/1/friends/2"))
-                .andExpect(status().isOk());
-
-        verify(userService, times(1)).addFriend(1, 2);
-    }
-
-    @Test
-    void testRemoveFriend() throws Exception {
-        doNothing().when(userService).removeFriend(1, 2);
-
-        mockMvc.perform(delete("/users/1/friends/2"))
-                .andExpect(status().isOk());
-
-        verify(userService, times(1)).removeFriend(1, 2);
-    }
-
-    @Test
-    void testGetFriends() throws Exception {
-        User friend = new User();
-        friend.setId(2);
-        friend.setLogin("friend");
-        friend.setEmail("friend@mail.com");
-        friend.setBirthday(LocalDate.of(2000,1,1));
-
-        when(userService.getFriends(1)).thenReturn(List.of(friend));
-
-        mockMvc.perform(get("/users/1/friends"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].login").value("friend"));
-
-        verify(userService, times(1)).getFriends(1);
-    }
-
-    @Test
-    void testGetCommonFriends() throws Exception {
-        User commonFriend = new User();
-        commonFriend.setId(3);
-        commonFriend.setLogin("common");
-        commonFriend.setEmail("common@mail.com");
-        commonFriend.setBirthday(LocalDate.of(2000,1,1));
-
-        when(userService.getCommonFriends(1, 2)).thenReturn(List.of(commonFriend));
-
-        mockMvc.perform(get("/users/1/friends/common/2"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].login").value("common"));
-
-        verify(userService, times(1)).getCommonFriends(1, 2);
+                        .content(objectMapper.writeValueAsString(user1)))
+                .andExpect(status().isBadRequest());
     }
 }
+

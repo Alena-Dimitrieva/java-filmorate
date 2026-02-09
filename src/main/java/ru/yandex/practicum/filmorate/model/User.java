@@ -12,36 +12,37 @@ import java.util.Map;
 
 /**
  * Модель пользователя.
- * Включает валидацию email, логина, даты рождения.
+ * Поля соответствуют схеме БД (таблица users).
  */
 @Data
 public class User {
 
-    private int id;
+    private int id; // PK, автоинкремент
 
     @Email(message = "Некорректный e-mail формат")
     @NotBlank(message = "E-mail обязателен")
-    private String email;
+    private String email; // email NOT NULL
 
     /**
      * Логин не должен быть пустым и не может содержать пробелы.
-     * Проверка на пробелы реализована вручную в сервисе.
+     * Проверка наличия пробелов выполняется в сервисе.
      */
     @NotBlank(message = "Логин не может быть пустым")
-    private String login;
+    private String login; // login NOT NULL
 
     /**
-     * Имя может быть пустым.
-     * В сервисе оно заменится логином.
+     * Имя пользователя. Может быть пустым; при создании сервиса
+     * нужно заменять пустое имя значением login (логика в сервисе).
      */
-    private String name;
+    private String name; // name VARCHAR(255)
 
     @PastOrPresent(message = "Дата рождения не может быть в будущем")
-    private LocalDate birthday;
+    private LocalDate birthday; // birthday DATE
 
     /**
-     * Друзья пользователя и их статус дружбы.
-     * Ключ — id друга, значение — статус: UNCONFIRMED / CONFIRMED
+     * Друзья и их статусы.
+     * Ключ — id друга, значение — статус отношений (REQUESTED / CONFIRMED).
+     * Таблица user_friends хранит пары (user_id, friend_id, status).
      */
     private Map<Integer, FriendshipStatus> friends = new HashMap<>();
 }

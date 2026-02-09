@@ -16,7 +16,7 @@ public interface UserStorage {
 
     void addFriend(int userId, int friendId);
 
-    void confirmFriend(int userId, int friendId); //пока не используется
+    void confirmFriend(int userId, int friendId);
 
     void removeFriend(int userId, int friendId);
 

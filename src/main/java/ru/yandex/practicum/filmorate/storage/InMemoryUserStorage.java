@@ -7,15 +7,19 @@ import ru.yandex.practicum.filmorate.model.User;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * In-memory реализация UserStorage.
+ * Дружба теперь односторонняя:
+ * пользователь добавляет другого в свой список друзей, но сам в его список не попадает.
+ */
 @Component
 public class InMemoryUserStorage implements UserStorage {
 
     private final Map<Integer, User> users = new HashMap<>();
-    private int idCounter = 1; //Друзья теперь хранятся внутри объекта User (user.getFriends()).
+    private int idCounter = 1;
 
     @Override
     public User create(User user) {
-        // Присвоение уникального id
         user.setId(idCounter++);
         users.put(user.getId(), user);
         return user;
@@ -23,7 +27,6 @@ public class InMemoryUserStorage implements UserStorage {
 
     @Override
     public User update(User user) {
-        // Проверка, существует ли пользователь перед обновлением
         if (!users.containsKey(user.getId())) {
             throw new NoSuchElementException("Пользователь с таким id не найден");
         }
@@ -41,38 +44,35 @@ public class InMemoryUserStorage implements UserStorage {
         return new ArrayList<>(users.values());
     }
 
+    /**
+     * Добавление друга односторонне:
+     * только в списке пользователя появляется друг
+     */
     @Override
     public void addFriend(int userId, int friendId) {
         User user = users.get(userId);
-        User friend = users.get(friendId);
-
-        if (user != null && friend != null) {
-            user.getFriends().put(friendId, FriendshipStatus.UNCONFIRMED);
-            friend.getFriends().put(userId, FriendshipStatus.UNCONFIRMED);
+        if (user != null && users.containsKey(friendId)) {
+            user.getFriends().put(friendId, FriendshipStatus.REQUESTED);
         }
     }
 
+    /**
+     * Подтверждение дружбы:
+     * меняется только статус у текущего пользователя, другого не трогаем
+     */
     @Override
     public void confirmFriend(int userId, int friendId) {
         User user = users.get(userId);
-        User friend = users.get(friendId);
-
-        if (user != null && friend != null) {
+        if (user != null && user.getFriends().containsKey(friendId)) {
             user.getFriends().put(friendId, FriendshipStatus.CONFIRMED);
-            friend.getFriends().put(userId, FriendshipStatus.CONFIRMED);
         }
     }
 
     @Override
     public void removeFriend(int userId, int friendId) {
         User user = users.get(userId);
-        User friend = users.get(friendId);
-
         if (user != null) {
             user.getFriends().remove(friendId);
-        }
-        if (friend != null) {
-            friend.getFriends().remove(userId);
         }
     }
 
@@ -82,7 +82,6 @@ public class InMemoryUserStorage implements UserStorage {
         if (user == null) {
             return List.of();
         }
-
         return user.getFriends().keySet().stream()
                 .map(users::get)
                 .filter(Objects::nonNull)
@@ -98,6 +97,7 @@ public class InMemoryUserStorage implements UserStorage {
             return List.of();
         }
 
+        // Считаем только друзей, которых оба пользователя добавили
         return first.getFriends().keySet().stream()
                 .filter(second.getFriends().keySet()::contains)
                 .map(users::get)
