@@ -15,6 +15,15 @@ public class GenreDbStorage implements GenreStorage {
 
     private final JdbcTemplate jdbcTemplate;
 
+    // SQL запросы
+
+    private static final String SELECT_ALL_GENRES =
+            "SELECT id, name FROM genres ORDER BY id";
+
+    private static final String SELECT_GENRE_BY_ID =
+            "SELECT id, name FROM genres WHERE id = ?";
+
+
     private final RowMapper<Genre> genreRowMapper = (rs, rowNum) ->
             new Genre(
                     rs.getInt("id"),
@@ -23,14 +32,13 @@ public class GenreDbStorage implements GenreStorage {
 
     @Override
     public List<Genre> findAll() {
-        String sql = "SELECT id, name FROM genres ORDER BY id";
-        return jdbcTemplate.query(sql, genreRowMapper);
+        return jdbcTemplate.query(SELECT_ALL_GENRES, genreRowMapper);
     }
 
     @Override
     public Optional<Genre> getById(int id) {
-        String sql = "SELECT id, name FROM genres WHERE id = ?";
-        List<Genre> result = jdbcTemplate.query(sql, genreRowMapper, id);
+        List<Genre> result =
+                jdbcTemplate.query(SELECT_GENRE_BY_ID, genreRowMapper, id);
         return result.stream().findFirst();
     }
 }

@@ -14,11 +14,19 @@ public class MpaDbStorage implements MpaStorage {
 
     private final JdbcTemplate jdbcTemplate;
 
+    // SQL запросы
+
+    private static final String SELECT_ALL_MPA =
+            "SELECT id, name FROM mpa ORDER BY id";
+
+    private static final String SELECT_MPA_BY_ID =
+            "SELECT id, name FROM mpa WHERE id = ?";
+
     @Override
     public List<Mpa> getAll() {
-        String sql = "SELECT id, name FROM mpa ORDER BY id";
-        return jdbcTemplate.query(sql, (rs, rowNum) ->
-                new Mpa(
+        return jdbcTemplate.query(
+                SELECT_ALL_MPA,
+                (rs, rowNum) -> new Mpa(
                         rs.getInt("id"),
                         rs.getString("name")
                 )
@@ -27,11 +35,14 @@ public class MpaDbStorage implements MpaStorage {
 
     @Override
     public Optional<Mpa> getById(int id) {
-        String sql = "SELECT id, name FROM mpa WHERE id = ?";
-        List<Mpa> mpas = jdbcTemplate.query(sql,
-                (rs, rowNum) -> new Mpa(rs.getInt("id"), rs.getString("name")),
-                id);
+        List<Mpa> mpas = jdbcTemplate.query(
+                SELECT_MPA_BY_ID,
+                (rs, rowNum) -> new Mpa(
+                        rs.getInt("id"),
+                        rs.getString("name")
+                ),
+                id
+        );
         return mpas.stream().findFirst();
     }
-
 }

@@ -23,97 +23,157 @@ public class UserDbStorage implements UserStorage {
 
     private final JdbcTemplate jdbcTemplate;
 
-    // Создание нового пользователя
+    // SQL запросы
+
+    private static final String INSERT_USER =
+            "INSERT INTO users (email, login, name, birthday) VALUES (?, ?, ?, ?)";
+
+    private static final String SELECT_LAST_USER_ID =
+            "SELECT MAX(id) FROM users";
+
+    private static final String UPDATE_USER =
+            "UPDATE users SET email = ?, login = ?, name = ?, birthday = ? WHERE id = ?";
+
+    private static final String SELECT_USER_BY_ID =
+            "SELECT id, email, login, name, birthday FROM users WHERE id = ?";
+
+    private static final String SELECT_ALL_USERS =
+            "SELECT id, email, login, name, birthday FROM users";
+
+    private static final String ADD_FRIEND =
+            "MERGE INTO user_friends (user_id, friend_id, status) KEY (user_id, friend_id) VALUES (?, ?, ?)";
+
+    private static final String CONFIRM_FRIEND =
+            "UPDATE user_friends SET status = ? WHERE user_id = ? AND friend_id = ?";
+
+    private static final String REMOVE_FRIEND =
+            "DELETE FROM user_friends WHERE user_id = ? AND friend_id = ?";
+
+    private static final String SELECT_FRIENDS =
+            "SELECT u.id, u.email, u.login, u.name, u.birthday, uf.status " +
+                    "FROM users u " +
+                    "JOIN user_friends uf ON u.id = uf.friend_id " +
+                    "WHERE uf.user_id = ?";
+
+    private static final String SELECT_COMMON_FRIENDS =
+            "SELECT u.id, u.email, u.login, u.name, u.birthday " +
+                    "FROM users u " +
+                    "JOIN user_friends uf1 ON u.id = uf1.friend_id " +
+                    "JOIN user_friends uf2 ON u.id = uf2.friend_id " +
+                    "WHERE uf1.user_id = ? AND uf2.user_id = ?";
+
+    private static final String SELECT_USER_FRIENDS_WITH_STATUS =
+            "SELECT friend_id, status FROM user_friends WHERE user_id = ?";
+
+    // СRUD
+
     @Override
     public User create(User user) {
-        String sql = "INSERT INTO users (email, login, name, birthday) VALUES (?, ?, ?, ?)";
-        jdbcTemplate.update(sql, user.getEmail(), user.getLogin(), user.getName(), user.getBirthday());
+        jdbcTemplate.update(
+                INSERT_USER,
+                user.getEmail(),
+                user.getLogin(),
+                user.getName(),
+                user.getBirthday()
+        );
 
-        // Получаем сгенерированный id
-        Integer id = jdbcTemplate.queryForObject("SELECT MAX(id) FROM users", Integer.class);
+        Integer id = jdbcTemplate.queryForObject(SELECT_LAST_USER_ID, Integer.class);
         user.setId(Objects.requireNonNull(id));
 
         return user;
     }
 
-    // Обновление существующего пользователя
     @Override
     public User update(User user) {
-        getById(user.getId()); // проверка, что пользователь существует
+        getById(user.getId());
 
-        String sql = "UPDATE users SET email = ?, login = ?, name = ?, birthday = ? WHERE id = ?";
-        jdbcTemplate.update(sql, user.getEmail(), user.getLogin(), user.getName(), user.getBirthday(), user.getId());
+        jdbcTemplate.update(
+                UPDATE_USER,
+                user.getEmail(),
+                user.getLogin(),
+                user.getName(),
+                user.getBirthday(),
+                user.getId()
+        );
 
         return user;
     }
 
-    // Получение пользователя по id
     @Override
     public Optional<User> getById(int id) {
-        String sql = "SELECT id, email, login, name, birthday FROM users WHERE id = ?";
-        List<User> users = jdbcTemplate.query(sql, (rs, rowNum) -> mapRowToUser(rs), id);
+        List<User> users = jdbcTemplate.query(
+                SELECT_USER_BY_ID,
+                (rs, rowNum) -> mapRowToUser(rs),
+                id
+        );
         return users.stream().findFirst();
     }
 
-    // Получение всех пользователей
     @Override
     public List<User> findAll() {
-        String sql = "SELECT id, email, login, name, birthday FROM users";
-        return jdbcTemplate.query(sql, (rs, rowNum) -> mapRowToUser(rs));
+        return jdbcTemplate.query(
+                SELECT_ALL_USERS,
+                (rs, rowNum) -> mapRowToUser(rs)
+        );
     }
 
-    // Добавление друга (односторонняя заявка)
+    // ===== Friends =====
+
     @Override
     public void addFriend(int userId, int friendId) {
-        String sql = "MERGE INTO user_friends (user_id, friend_id, status) KEY (user_id, friend_id) VALUES (?, ?, ?)";
-        jdbcTemplate.update(sql, userId, friendId, FriendshipStatus.REQUESTED.name());
+        jdbcTemplate.update(
+                ADD_FRIEND,
+                userId,
+                friendId,
+                FriendshipStatus.REQUESTED.name()
+        );
     }
 
-    // Подтверждение заявки в друзья
     @Override
     public void confirmFriend(int userId, int friendId) {
-        String sql = "UPDATE user_friends SET status = ? WHERE user_id = ? AND friend_id = ?";
-        jdbcTemplate.update(sql, FriendshipStatus.CONFIRMED.name(), userId, friendId);
+        jdbcTemplate.update(
+                CONFIRM_FRIEND,
+                FriendshipStatus.CONFIRMED.name(),
+                userId,
+                friendId
+        );
     }
 
-    // Удаление друга
     @Override
     public void removeFriend(int userId, int friendId) {
-        String sql = "DELETE FROM user_friends WHERE user_id = ? AND friend_id = ?";
-        jdbcTemplate.update(sql, userId, friendId);
+        jdbcTemplate.update(
+                REMOVE_FRIEND,
+                userId,
+                friendId
+        );
     }
 
-    // Получение списка друзей пользователя
     @Override
     public List<User> getFriends(int userId) {
-        String sql = "SELECT u.id, u.email, u.login, u.name, u.birthday, uf.status " +
-                "FROM users u " +
-                "JOIN user_friends uf ON u.id = uf.friend_id " +
-                "WHERE uf.user_id = ?";
-
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
-            User user = mapRowToUser(rs);
-            FriendshipStatus status = FriendshipStatus.valueOf(rs.getString("status"));
-            user.getFriends().put(rs.getInt("id"), status); // ключ — id друга
-            return user;
-        }, userId);
+        return jdbcTemplate.query(
+                SELECT_FRIENDS,
+                (rs, rowNum) -> {
+                    User user = mapRowToUser(rs);
+                    FriendshipStatus status = FriendshipStatus.valueOf(rs.getString("status"));
+                    user.getFriends().put(rs.getInt("id"), status);
+                    return user;
+                },
+                userId
+        );
     }
 
-    // Получение общих друзей двух пользователей
     @Override
     public List<User> getCommonFriends(int userId, int otherId) {
-        String sql = "SELECT u.id, u.email, u.login, u.name, u.birthday " +
-                "FROM users u " +
-                "JOIN user_friends uf1 ON u.id = uf1.friend_id " +
-                "JOIN user_friends uf2 ON u.id = uf2.friend_id " +
-                "WHERE uf1.user_id = ? AND uf2.user_id = ?";
-
-        return jdbcTemplate.query(sql, (rs, rowNum) -> mapRowToUser(rs), userId, otherId);
+        return jdbcTemplate.query(
+                SELECT_COMMON_FRIENDS,
+                (rs, rowNum) -> mapRowToUser(rs),
+                userId,
+                otherId
+        );
     }
 
     /**
-     * Маппинг строки ResultSet в объект User.
-     * Загружает друзей пользователя и их статусы.
+     * Маппинг ResultSet → User + загрузка друзей
      */
     private User mapRowToUser(ResultSet rs) throws SQLException {
         User user = new User();
@@ -121,13 +181,14 @@ public class UserDbStorage implements UserStorage {
         user.setEmail(rs.getString("email"));
         user.setLogin(rs.getString("login"));
         user.setName(rs.getString("name"));
+
         if (rs.getDate("birthday") != null) {
             user.setBirthday(rs.getDate("birthday").toLocalDate());
         }
 
-        // Загрузка друзей для этого пользователя
-        String sqlFriends = "SELECT friend_id, status FROM user_friends WHERE user_id = ?";
-        List<Map<String, Object>> friendList = jdbcTemplate.queryForList(sqlFriends, user.getId());
+        List<Map<String, Object>> friendList =
+                jdbcTemplate.queryForList(SELECT_USER_FRIENDS_WITH_STATUS, user.getId());
+
         for (Map<String, Object> f : friendList) {
             int friendId = (Integer) f.get("friend_id");
             FriendshipStatus status = FriendshipStatus.valueOf((String) f.get("status"));
