@@ -6,98 +6,94 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.dto.UserDto;
+import ru.yandex.practicum.filmorate.mapper.UserMapper;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/users")
 @Slf4j
 @RequiredArgsConstructor
-@Validated // Добавлено для валидации параметров
+@Validated
 public class UserController {
 
-    // Контроллер работает только с сервисом
     private final UserService userService;
 
     // Создание пользователя
     @PostMapping
-    public User create(@Valid @RequestBody User user) {
-        return userService.create(user);
+    public UserDto create(@Valid @RequestBody UserDto userDto) {
+        User user = UserMapper.fromDto(userDto);
+        User saved = userService.create(user);
+        return UserMapper.toDto(saved);
     }
 
     // Обновление пользователя
     @PutMapping
-    public User update(@Valid @RequestBody User user) {
-        return userService.update(user);
+    public UserDto update(@Valid @RequestBody UserDto userDto) {
+        User user = UserMapper.fromDto(userDto);
+        User updated = userService.update(user);
+        return UserMapper.toDto(updated);
     }
 
     // Получение всех пользователей
     @GetMapping
-    public List<User> findAll() {
-        return userService.findAll();
+    public List<UserDto> findAll() {
+        return userService.findAll().stream()
+                .map(UserMapper::toDto)
+                .collect(Collectors.toList());
     }
 
-    // Получение пользователя по id (GET /users/{id})
+    // Получение пользователя по id
     @GetMapping("/{id}")
-    public User getById(
+    public UserDto getById(
             @PathVariable
-            @Positive(message = "Id должен быть положительным") // ИЗМЕНЕНО
+            @Positive(message = "Id должен быть положительным")
             int id
     ) {
-        return userService.getById(id);
+        User user = userService.getById(id);
+        return UserMapper.toDto(user);
     }
 
-    // Добавление в друзья (PUT /users/{id}/friends/{friendId})
+    // Добавление в друзья
     @PutMapping("/{id}/friends/{friendId}")
     public void addFriend(
-            @PathVariable("id")
-            @Positive(message = "Id пользователя должен быть положительным") // ИЗМЕНЕНО
-            int id,
-
-            @PathVariable("friendId")
-            @Positive(message = "Id друга должен быть положительным") // ИЗМЕНЕНО
-            int friendId
+            @PathVariable("id") @Positive(message = "Id пользователя должен быть положительным") int id,
+            @PathVariable("friendId") @Positive(message = "Id друга должен быть положительным") int friendId
     ) {
         userService.addFriend(id, friendId);
     }
 
-    // Удаление из друзей (DELETE /users/{id}/friends/{friendId})
+    // Удаление из друзей
     @DeleteMapping("/{id}/friends/{friendId}")
     public void removeFriend(
-            @PathVariable("id")
-            @Positive(message = "Id пользователя должен быть положительным") // ИЗМЕНЕНО
-            int id,
-
-            @PathVariable("friendId")
-            @Positive(message = "Id друга должен быть положительным") // ИЗМЕНЕНО
-            int friendId
+            @PathVariable("id") @Positive(message = "Id пользователя должен быть положительным") int id,
+            @PathVariable("friendId") @Positive(message = "Id друга должен быть положительным") int friendId
     ) {
         userService.removeFriend(id, friendId);
     }
 
-    // Получение списка друзей пользователя (GET /users/{id}/friends)
+    // Получение списка друзей пользователя
     @GetMapping("/{id}/friends")
-    public List<User> getFriends(
-            @PathVariable("id")
-            @Positive(message = "Id пользователя должен быть положительным") // ИЗМЕНЕНО
-            int id
+    public List<UserDto> getFriends(
+            @PathVariable("id") @Positive(message = "Id пользователя должен быть положительным") int id
     ) {
-        return userService.getFriends(id);
+        return userService.getFriends(id).stream()
+                .map(UserMapper::toDto)
+                .collect(Collectors.toList());
     }
 
-    // Получение общих друзей (GET /users/{id}/friends/common/{otherId})
+    // Получение общих друзей
     @GetMapping("/{id}/friends/common/{otherId}")
-    public List<User> getCommonFriends(
-            @PathVariable("id")
-            @Positive(message = "Id пользователя должен быть положительным") // ИЗМЕНЕНО
-            int id,
-
-            @PathVariable("otherId")
-            @Positive(message = "Id второго пользователя должен быть положительным") // ИЗМЕНЕНО
-            int otherId
+    public List<UserDto> getCommonFriends(
+            @PathVariable("id") @Positive(message = "Id пользователя должен быть положительным") int id,
+            @PathVariable("otherId") @Positive(message = "Id второго пользователя должен быть положительным") int otherId
     ) {
-        return userService.getCommonFriends(id, otherId);
+        return userService.getCommonFriends(id, otherId).stream()
+                .map(UserMapper::toDto)
+                .collect(Collectors.toList());
     }
 }

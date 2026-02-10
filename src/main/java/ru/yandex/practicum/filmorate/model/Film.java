@@ -5,16 +5,15 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
-import ru.yandex.practicum.filmorate.Enum.Genre;
-import ru.yandex.practicum.filmorate.Enum.MpaRating;
 
 import java.time.LocalDate;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
  * Модель фильма.
- * Содержит базовые поля и валидацию согласно требованиям ТЗ.
+ * Поля соответствуют схеме БД (таблица films).
  */
 @Data
 public class Film {
@@ -22,29 +21,35 @@ public class Film {
     private int id;
 
     @NotBlank(message = "Название фильма не может быть пустым")
-    private String name;
+    private String name; // name NOT NULL
 
-    @Size(max = 200, message = "Описание не должно превышать 200 символов")
-    private String description;
+    @Size(max = 1024, message = "Описание не должно превышать 1024 символа")
+    private String description; // description VARCHAR(1024)
 
     /**
      * Дата релиза фильма.
-     * Дополнительная проверка на минимальную дату (28.12.1895)
-     * выполняется в сервисе, потому что Bean Validation не умеет
-     * проверять кастомные исторические даты без создания своего валидатора.
+     * Валидация на минимальную дату (28.12.1895) должна выполняться в сервисном слое.
      */
     @NotNull(message = "Дата релиза обязательна")
-    private LocalDate releaseDate;
+    private LocalDate releaseDate; // release_date DATE
 
     @Positive(message = "Продолжительность должна быть положительным числом")
-    private int duration; // продолжительность в минутах
+    private int duration; // duration INT NOT NULL
 
     /**
-     * Идентификаторы пользователей, поставивших лайк фильму.
+     * Содержит id пользователей, которые лайкнули фильм.
      */
     private Set<Integer> likes = new HashSet<>();
-    private Set<Genre> genres = new HashSet<>();//Жанры фильма
 
+    /**
+     * Жанры фильма.
+     * порядок жанров должен сохраняться как в запросе.
+     */
+    private Set<Genre> genres = new LinkedHashSet<>();
+
+    /**
+     * Рейтинг MPA — объект, который соответствует записи в таблице mpa.
+     */
     @NotNull(message = "Рейтинг MPA обязателен")
-    private MpaRating mpaRating;//Рейтинг MPA
+    private Mpa mpa;
 }

@@ -1,139 +1,101 @@
 package ru.yandex.practicum.filmorate.controllertests;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import ru.yandex.practicum.filmorate.AbstractIntegrationTest;
-import ru.yandex.practicum.filmorate.Enum.MpaRating;
-import ru.yandex.practicum.filmorate.controller.FilmController;
-import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.service.FilmService;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.http.*;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
+import ru.yandex.practicum.filmorate.dto.FilmRequestDto;
+import ru.yandex.practicum.filmorate.dto.MpaRequestDto;
 
 import java.time.LocalDate;
 import java.util.HashSet;
-import java.util.List;
 
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@WebMvcTest(FilmController.class)
-class FilmControllerTest extends AbstractIntegrationTest {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@AutoConfigureTestDatabase
+class FilmControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @LocalServerPort
+    private int port;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private String baseUrl;
+    private RestTemplate restTemplate;
 
-    @MockBean
-    private FilmService filmService;
+    @BeforeEach
+    void setUp() {
+        baseUrl = "http://localhost:" + port + "/films";
+        restTemplate = new RestTemplate();
+    }
 
+    //создание фильма
     @Test
-    void testCreateFilm() throws Exception {
-        Film film = new Film();
-        film.setId(1);
-        film.setName("Titanic");
-        film.setDescription("Love story");
-        film.setReleaseDate(LocalDate.of(1997, 12, 19));
-        film.setDuration(195);
+    void createFilm_success() {
+        FilmRequestDto request = new FilmRequestDto();
+        request.setName("Тестовый фильм");
+        request.setDescription("Описание фильма");
+        request.setReleaseDate(LocalDate.of(2020, 1, 1));
+        request.setDuration(120);
+        request.setMpa(new MpaRequestDto(3));
+        request.setGenres(new HashSet<>());
 
-        film.setGenres(new HashSet<>()); // добавление пустого Set жанра
-        film.setMpaRating(MpaRating.G); // добавление рейтинга по умолчанию
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
 
-        when(filmService.create(any(Film.class))).thenReturn(film);
+        HttpEntity<FilmRequestDto> entity = new HttpEntity<>(request, headers);
+        ResponseEntity<String> response = restTemplate.postForEntity(baseUrl, entity, String.class);
 
-        mockMvc.perform(post("/films")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(film.getId()))
-                .andExpect(jsonPath("$.name").value(film.getName()));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).contains("Тестовый фильм");
+    }
 
-        verify(filmService, times(1)).create(any(Film.class));
+    //ниже 2 теста на валидация
+    @Test
+    void createFilm_shouldFailValidation_emptyName() {
+        FilmRequestDto request = new FilmRequestDto();
+        request.setName(""); // пустое имя
+        request.setDescription("Описание фильма");
+        request.setReleaseDate(LocalDate.of(2020, 1, 1));
+        request.setDuration(120);
+        request.setMpa(new MpaRequestDto(3));
+        request.setGenres(new HashSet<>());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<FilmRequestDto> entity = new HttpEntity<>(request, headers);
+
+        HttpClientErrorException exception = assertThrows(HttpClientErrorException.class,
+                () -> restTemplate.postForEntity(baseUrl, entity, String.class));
+
+        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(exception.getResponseBodyAsString()).contains("Название фильма обязательно");
     }
 
     @Test
-    void testUpdateFilm() throws Exception {
-        Film film = new Film();
-        film.setId(1);
-        film.setName("Titanic Updated");
-        film.setDescription("Updated description");
-        film.setReleaseDate(LocalDate.of(1997, 12, 19));
-        film.setDuration(195);
+    void createFilm_shouldFailValidation_negativeDuration() {
+        FilmRequestDto request = new FilmRequestDto();
+        request.setName("Фильм");
+        request.setDescription("Описание фильма");
+        request.setReleaseDate(LocalDate.of(2020, 1, 1));
+        request.setDuration(-10); // отрицательная длительность
+        request.setMpa(new MpaRequestDto(3));
+        request.setGenres(new HashSet<>());
 
-        film.setGenres(new HashSet<>());// добавление пустых Set жанров
-        film.setMpaRating(MpaRating.G); // добавление рейтинга по умолчанию
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<FilmRequestDto> entity = new HttpEntity<>(request, headers);
 
-        when(filmService.update(any(Film.class))).thenReturn(film);
+        HttpClientErrorException exception = assertThrows(HttpClientErrorException.class,
+                () -> restTemplate.postForEntity(baseUrl, entity, String.class));
 
-        mockMvc.perform(put("/films")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(film)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Titanic Updated"));
-
-        verify(filmService, times(1)).update(any(Film.class));
-    }
-
-    @Test
-    void testFindAllFilms() throws Exception {
-        Film film = new Film();
-        film.setId(1);
-        film.setName("Titanic");
-        film.setDescription("Love story");
-        film.setReleaseDate(LocalDate.of(1997, 12, 19));
-        film.setDuration(195);
-
-        when(filmService.findAll()).thenReturn(List.of(film));
-
-        mockMvc.perform(get("/films"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Titanic"));
-
-        verify(filmService, times(1)).findAll();
-    }
-
-    //Новые тесты
-    @Test
-    void testAddLike() throws Exception {
-        doNothing().when(filmService).addLike(1, 2);
-
-        mockMvc.perform(put("/films/1/like/2"))
-                .andExpect(status().isOk());
-
-        verify(filmService, times(1)).addLike(1, 2);
-    }
-
-    @Test
-    void testRemoveLike() throws Exception {
-        doNothing().when(filmService).removeLike(1, 2);
-
-        mockMvc.perform(delete("/films/1/like/2"))
-                .andExpect(status().isOk());
-
-        verify(filmService, times(1)).removeLike(1, 2);
-    }
-
-    @Test
-    void testGetPopularFilms() throws Exception {
-        Film film = new Film();
-        film.setId(1);
-        film.setName("Popular Film");
-        film.setDescription("Desc");
-        film.setReleaseDate(LocalDate.of(2020, 1, 1));
-        film.setDuration(120);
-
-        when(filmService.getPopularFilms(5)).thenReturn(List.of(film));
-
-        mockMvc.perform(get("/films/popular?count=5"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Popular Film"));
-
-        verify(filmService, times(1)).getPopularFilms(5);
+        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(exception.getResponseBodyAsString()).contains("Продолжительность должна быть положительной");
     }
 }

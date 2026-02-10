@@ -10,115 +10,110 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import jakarta.validation.ConstraintViolationException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
 
-@SuppressWarnings("unused")
 @RestControllerAdvice
 @Slf4j
 public class ErrorHandler {
 
     /**
-     * Обработка ошибок сервиса (напр., ValidationException)
-     * Возвращаем 400 Bad Request
+     * Обработка ValidationException из сервиса
      */
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<Map<String, Object>> handleValidationException(ValidationException e) {
         log.warn("ValidationException: {}", e.getMessage());
-        Map<String, Object> body = new HashMap<>();
-        body.put("error", "Validation error");
-        body.put("description", e.getMessage());
+        Map<String, Object> body = initFilmErrorBody();
+
+        // Если ошибка связана с MPA
+        if (e.getMessage().toLowerCase().contains("mpa")) {
+            body.put("mpaId", e.getMessage());
+        }
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     /**
-     * Обработка ошибок @Valid при биндинге тела запроса
-     * 400 Bad Request
-     * Формируем JSON с отдельными полями модели для прохождения Postman-тестов
+     * Ошибки @Valid в теле запроса (MethodArgumentNotValidException)
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException e) {
         log.warn("MethodArgumentNotValidException: {}", e.getMessage());
-        Map<String, Object> body = new HashMap<>();
-        body.put("error", "Validation failed");
-
-        // Все поля User/Film как ключи, null по умолчанию
-        body.put("id", null);
-        body.put("email", null);
-        body.put("login", null);
-        body.put("name", null);
-        body.put("birthday", null);
+        Map<String, Object> body = initFilmErrorBody();
 
         // Заполняем поля, по которым есть ошибки
-        e.getBindingResult().getFieldErrors().forEach(fe -> body.put(fe.getField(), fe.getDefaultMessage()));
+        e.getBindingResult().getFieldErrors()
+                .forEach(fe -> {
+                    if ("mpaId".equals(fe.getField())) {
+                        body.put("mpaId", fe.getDefaultMessage());
+                    } else if ("genres".equals(fe.getField())) {
+                        body.put("genres", new ArrayList<>());
+                    } else {
+                        body.put(fe.getField(), fe.getDefaultMessage());
+                    }
+                });
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     /**
-     * Обработка ошибок валидации параметров запроса (например, в @RequestParam, @PathVariable)
+     * Ошибки валидации параметров запроса (@RequestParam, @PathVariable)
      */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException e) {
         log.warn("ConstraintViolationException: {}", e.getMessage());
         Map<String, Object> body = new HashMap<>();
         body.put("error", "Validation failed");
+
         String description = e.getConstraintViolations().stream()
                 .map(cv -> cv.getPropertyPath() + ": " + cv.getMessage())
                 .reduce((a, b) -> a + "; " + b)
                 .orElse("");
+
         body.put("description", description);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     /**
-     * Неправильный JSON в теле запроса — возвращаем 400
+     * Неверный JSON в теле запроса
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleNotReadable(HttpMessageNotReadableException e) {
         log.warn("HttpMessageNotReadableException: {}", e.getMessage());
-        Map<String, Object> body = new HashMap<>();
+        Map<String, Object> body = initFilmErrorBody();
         body.put("error", "Malformed request");
         body.put("description", e.getMostSpecificCause().getMessage());
-        // ⚡ Postman тесты ожидают поля модели
-        body.put("id", null);
-        body.put("email", null);
-        body.put("login", null);
-        body.put("name", null);
-        body.put("birthday", null);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     /**
-     * Неверный тип аргумента
+     * Неверный тип аргумента запроса
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
         log.warn("MethodArgumentTypeMismatchException: {}", e.getMessage());
         Map<String, Object> body = new HashMap<>();
         body.put("error", "Invalid parameter");
-        String desc = String.format("Parameter '%s' has invalid value '%s': %s",
-                e.getName(), e.getValue(), e.getMessage());
-        body.put("description", desc);
+        body.put("description", String.format(
+                "Parameter '%s' has invalid value '%s': %s",
+                e.getName(), e.getValue(), e.getMessage()
+        ));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     /**
-     * Обработка ошибок, когда объект не найден (например, при update unknown)
-     * Возвращаем 404 Not Found
+     * Обработка NotFoundException (MPA, жанр, фильм)
      */
-    @ExceptionHandler(NoSuchElementException.class)
-    public ResponseEntity<Map<String, Object>> handleNotFound(NoSuchElementException e) {
-        log.warn("NoSuchElementException: {}", e.getMessage());
-        Map<String, Object> body = new HashMap<>();
+    @ExceptionHandler({NoSuchElementException.class, NotFoundException.class})
+    public ResponseEntity<Map<String, Object>> handleNotFound(Exception e) {
+        log.warn("NotFoundException: {}", e.getMessage());
+        Map<String, Object> body = initFilmErrorBody();
         body.put("error", "Not found");
         body.put("description", e.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
     /**
-     * Обработка IncorrectCountException — возвращаем 400
+     * Ловим IncorrectCountException
      */
     @ExceptionHandler(IncorrectCountException.class)
     public ResponseEntity<Map<String, Object>> handleIncorrectCountException(IncorrectCountException e) {
@@ -130,7 +125,7 @@ public class ErrorHandler {
     }
 
     /**
-     * Ловим всё остальное как fallback — 500 Internal Server Error
+     * Fallback для всех остальных ошибок
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleOtherExceptions(Exception e) {
@@ -139,5 +134,20 @@ public class ErrorHandler {
         body.put("error", "Server error");
         body.put("description", "Произошла ошибка сервера: " + e.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+    }
+
+    /**
+     * Инициализация JSON-ответа для Film ошибок
+     */
+    private Map<String, Object> initFilmErrorBody() {
+        Map<String, Object> body = new HashMap<>();
+        body.put("id", null);
+        body.put("name", null);
+        body.put("description", null);
+        body.put("releaseDate", null);
+        body.put("duration", null);
+        body.put("mpaId", null);
+        body.put("genres", new ArrayList<>());
+        return body;
     }
 }
